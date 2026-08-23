@@ -1,0 +1,5 @@
+[mgr]
+prepend_keymap = [
+	{ on = [ "'", "p" ], run = "plugin pin-folder pin", desc = "Pin/unpin hovered folder in the Parent column" },
+	{ on = [ "'", "f" ], run = "plugin pin-folder focus", desc = "Toggle focus into the pinned folder" },
+]

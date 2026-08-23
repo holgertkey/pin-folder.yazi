@@ -1,0 +1,6 @@
+/target
+CLAUDE.md
+
+# Debug and testing files
+.debug/
+.claude/

@@ -1,0 +1,1 @@
+require("pin-folder"):setup()
