@@ -10,7 +10,8 @@ is independent from the `Current` column's cursor.
 
 > **Status:** work in progress, not yet published as a package. See
 > [`.debug/concept.md`](.debug/concept.md) for design notes, known issues and
-> what's still being worked on.
+> what's still being worked on, and [`CHANGELOG.md`](CHANGELOG.md) for a
+> user-facing summary of what's shipped so far.
 
 ## Requirements
 
@@ -18,13 +19,15 @@ is independent from the `Current` column's cursor.
 
 ## How it works
 
-The pinned directory is backed by a real, normally-inactive yazi tab. Two
+The pinned directory is backed by a real, normally-inactive yazi tab. Three
 built-in components are overridden:
 
 - `Parent` always renders that tab's `current` folder instead of the real
   parent directory.
 - `Root.build` keeps `Current`/`Preview` locked to your working tab even while
   the pinned tab is temporarily made active for input (via `focus`).
+- `Tab.build` draws the focus indicator line described under Keybindings
+  below.
 
 Because the pinned pane is a genuine tab, every built-in yazi command
 (navigation, `create`/`remove`/`rename`/`yank`/`paste`, previews) works on it

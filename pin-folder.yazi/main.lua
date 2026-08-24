@@ -1,4 +1,5 @@
 --- @sync entry
+--- @since 26.8.15
 
 -- pin.yazi
 --
