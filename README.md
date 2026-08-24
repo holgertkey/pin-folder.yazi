@@ -72,10 +72,17 @@ prepend_keymap = [
 `paste` by default.)
 
 - `' p` -- pin the hovered directory (or the current one, if nothing directory
-  is hovered) into the `Parent` column; press again to unpin.
+  is hovered) into the `Parent` column and switch input focus into it; press
+  again (from anywhere) to unpin.
 - `' f` -- toggle input focus between your working tab and the pinned one.
   While focused on the pinned tab, all normal navigation and file operations
-  apply to it.
+  apply to it, and `Current`/`Preview` stay showing your working tab
+  untouched.
+
+While something is pinned, whichever pane -- `Parent` or `Current` -- is
+currently receiving input gets a yellow line above it, so it's clear at a
+glance where `' f` left you. Change the color/style in `FOCUS_STYLE` near the
+top of `pin-folder.yazi/main.lua` to taste.
 
 ## Known limitations
 

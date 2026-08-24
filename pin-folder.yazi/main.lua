@@ -19,10 +19,16 @@
 
 local M = {}
 
+-- Tab ids (tab.id) are userdata with no __eq defined on the Rust side, so
+-- Lua's default (reference) equality never considers two of them equal even
+-- for the same tab -- compare/store `.value` (the plain number it wraps)
+-- instead, never the userdata itself.
+local function id_of(tab) return tab.id.value end
+
 local function pin_index()
 	if M.pin_id then
 		for i = 1, #cx.tabs do
-			if cx.tabs[i].id == M.pin_id then
+			if id_of(cx.tabs[i]) == M.pin_id then
 				return i
 			end
 		end
@@ -32,12 +38,18 @@ local function pin_index()
 	-- Not attached to a tab yet (fresh pin, or restored from a previous
 	-- session) -- find it once by its cwd, then lock onto its id so that
 	-- navigating inside the pinned tab doesn't lose track of it.
+	--
+	-- Pinning the hovered directory when nothing directory is hovered pins
+	-- the *current* directory -- the freshly created tab then starts out
+	-- with the exact same cwd as the working tab (M.main_id). Exclude that
+	-- one explicitly, or this would latch onto the working tab instead of
+	-- the new pinned one (they're indistinguishable by cwd alone).
 	if not M.path then
 		return nil
 	end
 	for i = 1, #cx.tabs do
-		if tostring(cx.tabs[i].current.cwd) == M.path then
-			M.pin_id = cx.tabs[i].id
+		if id_of(cx.tabs[i]) ~= M.main_id and tostring(cx.tabs[i].current.cwd) == M.path then
+			M.pin_id = id_of(cx.tabs[i])
 			return i
 		end
 	end
@@ -49,12 +61,23 @@ local function main_index()
 		return nil
 	end
 	for i = 1, #cx.tabs do
-		if cx.tabs[i].id == M.main_id then
+		if id_of(cx.tabs[i]) == M.main_id then
 			return i
 		end
 	end
 	return nil
 end
+
+-- Whether input focus is currently on the pinned tab, i.e. whether `focus`
+-- would switch back to the working tab if invoked right now.
+local function pin_focus()
+	local pidx = pin_index()
+	return pidx, pidx ~= nil and id_of(cx.tabs[pidx]) == id_of(cx.active)
+end
+
+-- Border drawn around whichever of Parent/Current currently has input focus,
+-- while something is pinned. Change the color here to taste.
+local FOCUS_STYLE = ui.Style():fg("yellow"):bold(true)
 
 function M:setup()
 	ps.sub_remote("@pin-folder", function(body) M.path = body and body.path or nil end)
@@ -62,8 +85,8 @@ function M:setup()
 	Root.build = function(root)
 		local tab = cx.active
 
-		local pidx = pin_index()
-		if pidx and cx.tabs[pidx].id == cx.active.id then
+		local _, on_pin = pin_focus()
+		if on_pin then
 			local midx = main_index()
 			if midx then
 				tab = cx.tabs[midx]
@@ -91,15 +114,38 @@ function M:setup()
 
 		return me
 	end
+
+	-- Mark whichever pane (Parent while on_pin, Current otherwise) is
+	-- currently receiving input, so `focus` toggling is visible at a glance.
+	-- The target chunk is padded by one row on top *before* the real build()
+	-- runs (so its content is pushed down out of the way), then the border
+	-- is drawn using the original, unpadded chunk -- using the padded one
+	-- here would draw the line on the same row as the content, not above it.
+	local tab_build = Tab.build
+	Tab.build = function(self, ...)
+		if not M.path then
+			return tab_build(self, ...)
+		end
+
+		local _, on_pin = pin_focus()
+		local target = on_pin and 1 or 2
+		local original = self._chunks[target]
+
+		self._chunks[target] = original:pad(ui.Pad.top(1))
+		tab_build(self, ...)
+
+		self._base = ya.list_merge(self._base or {}, {
+			ui.Border(ui.Edge.TOP):area(original):type(ui.Border.PLAIN):style(FOCUS_STYLE),
+		})
+	end
 end
 
 function M:entry(job)
 	local action = job.args[1]
 
-	local pidx = pin_index()
-	local on_pin = pidx and cx.tabs[pidx].id == cx.active.id
+	local pidx, on_pin = pin_focus()
 	if not on_pin then
-		M.main_id = cx.active.id
+		M.main_id = id_of(cx.active)
 	end
 
 	if action == "pin" then
@@ -120,13 +166,13 @@ function M:entry(job)
 
 		local hovered = cx.active.current.hovered
 		local target = (hovered and hovered.cha.is_dir) and hovered.url or cx.active.current.cwd
-		local origin_idx = cx.tabs.idx
 
 		M.path = tostring(target)
 		ps.pub_to(0, "@pin-folder", { path = M.path })
 
+		-- tab_create activates the new tab itself, which is what leaves focus
+		-- on the pinned folder right after pinning -- do not switch back.
 		ya.emit("tab_create", { target })
-		ya.emit("tab_switch", { origin_idx - 1 })
 	elseif action == "focus" then
 		if not pidx then
 			return
