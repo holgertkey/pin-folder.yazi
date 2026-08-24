@@ -17,6 +17,9 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
 - A colored line above whichever pane (`Parent`/`Current`) currently has
   input focus while something is pinned, so `focus` toggling is visible.
 - The pinned path persists across yazi restarts (via DDS).
+- The tab bar is hidden entirely while something is pinned, so the pinned
+  tab can't be switched to or closed by accident via yazi's own tab
+  commands (number keys, mouse clicks).
 
 ### Fixed
 
@@ -29,3 +32,16 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
   userdata directly -- Lua's default (reference) equality made `==` always
   false for it, regardless of which tab was actually being compared.
 - Rapid repeated pin/unpin no longer creates duplicate tabs.
+- The pinned folder is now actually restored after a yazi restart: the tab
+  it lives in is recreated from the persisted path instead of the plugin
+  silently sitting in a "pinned but nothing to show" state until the next
+  manual `pin`/`unpin`. This also covers restarting with a shell that `cd`s
+  to yazi's last active-tab cwd on quit (e.g. a `--cwd-file` wrapper) after
+  quitting with focus on the pinned tab, which previously left the restore
+  silently no-op'd because the next launch's sole tab already sat at the
+  pinned path.
+- After a restart, `Parent` no longer stays empty until focus is manually
+  toggled onto the pinned tab: the restore now waits for the recreated
+  tab's directory listing to actually finish loading before switching
+  focus back to the working tab, instead of switching immediately and
+  risking the (background) load getting stuck indefinitely.

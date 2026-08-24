@@ -81,7 +81,16 @@ end
 local FOCUS_STYLE = ui.Style():fg("yellow"):bold(true)
 
 function M:setup()
-	ps.sub_remote("@pin-folder", function(body) M.path = body and body.path or nil end)
+	ps.sub_remote("@pin-folder", function(body)
+		M.path = body and body.path or nil
+		if M.path then
+			-- Restored (or received from another instance) but the tab
+			-- itself doesn't exist yet -- tabs don't survive a restart, so
+			-- recreate it. Hand off to the sync `entry` (this callback may
+			-- not run with the same guarantees) rather than touching cx here.
+			ya.emit("plugin", { "pin-folder", "reattach" })
+		end
+	end)
 
 	Root.build = function(root)
 		local tab = cx.active
@@ -102,6 +111,22 @@ function M:setup()
 			Status:new(root._chunks[4], cx.active),
 			Modal:new(root._area),
 		}
+	end
+
+	-- Hide the tab bar entirely while something is pinned. The pinned tab is
+	-- a real, generic tab -- shown, it invites the user to switch/close it
+	-- via yazi's own tab commands (number keys, mouse clicks, `<C-c>`/
+	-- `close`), which bypass this plugin entirely and desync M.path/
+	-- M.pin_id/M.main_id from the tab that command just touched. Hiding the
+	-- bar doesn't stop `<C-c>` from closing whatever tab is currently
+	-- active, but it does remove the visible invitation to interact with
+	-- the pinned tab directly.
+	local tabs_height = Tabs.height
+	Tabs.height = function()
+		if M.path then
+			return 0
+		end
+		return tabs_height()
 	end
 
 	local parent_new = Parent.new
@@ -143,6 +168,85 @@ end
 
 function M:entry(job)
 	local action = job.args[1]
+
+	-- Handled ahead of the generic preamble below: both need full control
+	-- over `M.main_id` at exact points the preamble doesn't give them (see
+	-- the comments inline). Not reached for "pin"/"focus".
+	if action == "reattach" then
+		if not M.path then
+			return
+		end
+
+		-- Set *before* the pin_index() guard call below, not after: with
+		-- M.pin_id still nil on a fresh restart, pin_index() falls back to
+		-- a cwd scan that needs a real M.main_id to exclude -- otherwise it
+		-- can latch onto the very (sole) starting tab if it happens to
+		-- already sit at M.path. Not hypothetical: a `--cwd-file` shell
+		-- wrapper (e.g. the `y()` function in ~/.zshrc/~/.bashrc) restores
+		-- the shell's cwd to wherever the active tab was on quit, so
+		-- quitting with focus on the pinned tab makes the very next `yazi`
+		-- launch start with its only tab already sitting at the pinned
+		-- path -- exactly the collision this needs to exclude. Safe to
+		-- read M.main_id further down in the "already attached" case too:
+		-- pin_index() only consults it in this same cwd fallback, which
+		-- never runs once M.pin_id is cached from a real earlier attach.
+		M.main_id = id_of(cx.active)
+		if pin_index() then
+			return
+		end
+
+		ya.emit("tab_create", { Url(M.path) })
+		-- tab_create is async and activates the tab it creates -- switching
+		-- back to M.main_id has to wait until that's landed, hence the
+		-- follow-up dispatch instead of doing it inline here.
+		ya.emit("plugin", { "pin-folder", "settle" })
+		return
+	elseif action == "settle" then
+		-- Runs once the tab_create from "reattach" above has landed, so
+		-- cx.active *is* that new tab -- latch onto it directly instead of
+		-- going through pin_index()'s cwd scan (which would be ambiguous
+		-- for the same reason "pin" excludes M.main_id from it).
+		local active = id_of(cx.active)
+		if not (M.path and M.main_id and active ~= M.main_id) then
+			return
+		end
+		M.pin_id = active
+
+		-- Wait for the new tab's initial directory read to finish before
+		-- switching focus away from it. Empirically, a background (inactive)
+		-- tab's very first load can get stuck in FolderStage.Loading
+		-- indefinitely once you switch away from it before it lands --
+		-- switching back to `M.main_id` synchronously, right after
+		-- `tab_create`, left `Parent` permanently empty until the user
+		-- manually toggled focus onto the pinned tab (which finally gave it
+		-- a chance to load). Polling briefly here, instead of switching back
+		-- immediately, reliably avoids that: capped at 20 x 30ms so a very
+		-- slow/huge/remote directory can't hang the restore -- if the cap is
+		-- hit it just proceeds, same as the pre-existing "not live-watched
+		-- while unfocused" limitation for such directories.
+		ya.async(function()
+			local loaded, n = false, 0
+			while n < 20 and not loaded do
+				loaded = ya.sync(function()
+					local pidx = pin_index()
+					return pidx == nil or cx.tabs[pidx].current.stage() ~= false
+				end)()
+				if not loaded then
+					n = n + 1
+					ya.sleep(0.03)
+				end
+			end
+
+			ya.sync(function()
+				local midx = main_index()
+				if midx then
+					ya.emit("tab_switch", { midx - 1 })
+				end
+				ui.render()
+			end)()
+		end)
+		return
+	end
 
 	local pidx, on_pin = pin_focus()
 	if not on_pin then
