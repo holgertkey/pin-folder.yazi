@@ -17,9 +17,11 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
 - A colored line above whichever pane (`Parent`/`Current`) currently has
   input focus while something is pinned, so `focus` toggling is visible.
 - The pinned path persists across yazi restarts (via DDS).
-- The tab bar is hidden entirely while something is pinned, so the pinned
-  tab can't be switched to or closed by accident via yazi's own tab
-  commands (number keys, mouse clicks).
+- The pinned tab is hidden from the tab bar (the user's own tabs, if any,
+  stay visible and correctly numbered) and pushed to the end of the tab
+  list at pin time, reducing the chance of switching to or closing it by
+  accident via yazi's own tab commands (number keys, mouse clicks). Not a
+  complete guarantee -- see the plugin's "Known limitations" comment.
 
 ### Fixed
 
@@ -45,3 +47,7 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
   tab's directory listing to actually finish loading before switching
   focus back to the working tab, instead of switching immediately and
   risking the (background) load getting stuck indefinitely.
+- `pin` no longer creates a second, duplicate tab for the folder it just
+  pinned: `ps.pub_to` turns out to deliver back to the *publishing*
+  instance's own subscription, so every `pin` was also triggering the
+  restart-restore logic on itself right after creating the real tab.

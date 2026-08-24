@@ -17,6 +17,13 @@
 --   tab (Tab:build passes the same tab to Rails/Markers as to Parent), so
 --   they may not line up with the pinned listing. Cosmetic only.
 -- - Counts as one more tab against yazi's 9-tab limit while pinned.
+-- - The pinned tab is hidden from the tab bar and pushed to the end of
+--   cx.tabs at pin time, so it stays out of the way of the user's own
+--   tabs (numbered/switched by their own visible order). But yazi's
+--   number keys (1-9), `]`/`[`, `{`/`}` are hardcoded to absolute cx.tabs
+--   positions with no concept of a hidden tab, and a tab the user creates
+--   *after* pinning can land ahead of the pinned one and shift things
+--   again -- not re-enforced continuously. See .debug/concept.md.
 
 local M = {}
 
@@ -113,20 +120,106 @@ function M:setup()
 		}
 	end
 
-	-- Hide the tab bar entirely while something is pinned. The pinned tab is
-	-- a real, generic tab -- shown, it invites the user to switch/close it
-	-- via yazi's own tab commands (number keys, mouse clicks, `<C-c>`/
-	-- `close`), which bypass this plugin entirely and desync M.path/
-	-- M.pin_id/M.main_id from the tab that command just touched. Hiding the
-	-- bar doesn't stop `<C-c>` from closing whatever tab is currently
-	-- active, but it does remove the visible invitation to interact with
-	-- the pinned tab directly.
+	-- Hide *only* the pinned tab from the tab bar -- not the whole bar.
+	-- Earlier versions hid the entire bar whenever something was pinned,
+	-- which also hid the user's own unrelated tabs if they had any open.
+	-- The pinned tab is a real, generic tab -- shown, it invites the user
+	-- to switch/close it via yazi's own tab commands (number keys, mouse
+	-- clicks, `<C-c>`/`close`), which bypass this plugin entirely and
+	-- desync M.path/M.pin_id/M.main_id from the tab that command just
+	-- touched. This reduces that risk for the user's *own* tabs (they're
+	-- shown and clickable normally, numbered by their own visible order),
+	-- but not for the pinned tab itself: yazi's number keys (`1`-`9`),
+	-- `]`/`[`, `{`/`}` are all hardcoded to *absolute* cx.tabs positions
+	-- and have no concept of a hidden tab, so they can still land on it
+	-- (see the `tab_swap "bot"` calls below, which push the pinned tab to
+	-- the very end right after creating it specifically so this only
+	-- affects the *last* numeric slot for the user's own tabs at pin-time,
+	-- not all of them -- but a tab the user creates *after* pinning can
+	-- still land ahead of the pinned one and shift things again; not
+	-- re-enforced continuously, see .debug/concept.md).
+	--
+	-- Reimplements `Tabs:redraw`/`:click` rather than filtering input to
+	-- the originals, since neither takes the tab list as a parameter --
+	-- both read `cx.tabs` directly. This couples to more of yazi's internal
+	-- rendering/click-offset math than the rest of this plugin does
+	-- (`self:style()`, `self:inner_width()`, `th.tabs.*`, `self._offsets`)
+	-- -- a deliberate trade accepted for this specific fix, not the default
+	-- approach elsewhere in this file.
+	local function visible_tabs()
+		local pidx = pin_index()
+		if not pidx then
+			return nil
+		end
+		local visible = {}
+		for i = 1, #cx.tabs do
+			if i ~= pidx then
+				visible[#visible + 1] = i
+			end
+		end
+		return visible
+	end
+
 	local tabs_height = Tabs.height
 	Tabs.height = function()
-		if M.path then
-			return 0
+		local visible = visible_tabs()
+		if not visible then
+			return tabs_height()
 		end
-		return tabs_height()
+		return #visible > 1 and 1 or 0
+	end
+
+	local tabs_redraw = Tabs.redraw
+	Tabs.redraw = function(self)
+		local visible = visible_tabs()
+		if not visible then
+			return tabs_redraw(self)
+		end
+		if self.height() < 1 then
+			return {}
+		end
+
+		local style = self:style()
+		local lines = {
+			ui.Line(th.tabs.sep_outer.open):fg(style.inactive:bg()),
+		}
+
+		local pos = lines[1]:width()
+		local max = math.floor(self:inner_width() / #visible)
+		self._offsets = {}
+		for vi, i in ipairs(visible) do
+			local name = ui.truncate(string.format(" %d %s ", vi, cx.tabs[i].name), { max = max })
+			if i == cx.tabs.idx then
+				lines[#lines + 1] = ui.Line {
+					ui.Span(th.tabs.sep_inner.open):fg(style.active:bg()):bg(style.inactive:bg()),
+					ui.Span(name):style(style.active),
+					ui.Span(th.tabs.sep_inner.close):fg(style.active:bg()):bg(style.inactive:bg()),
+				}
+			else
+				lines[#lines + 1] = ui.Line(name):style(style.inactive)
+			end
+			self._offsets[vi], pos = pos, pos + lines[#lines]:width()
+		end
+
+		lines[#lines + 1] = ui.Line(th.tabs.sep_outer.close):fg(style.inactive:bg())
+		return ui.Line(lines):area(self._area)
+	end
+
+	local tabs_click = Tabs.click
+	Tabs.click = function(self, event, up)
+		local visible = visible_tabs()
+		if not visible then
+			return tabs_click(self, event, up)
+		end
+		if up or event.is_middle then
+			return
+		end
+		for vi = #visible, 1, -1 do
+			if event.x >= self._offsets[vi] then
+				ya.emit("tab_switch", { visible[vi] - 1 })
+				break
+			end
+		end
 	end
 
 	local parent_new = Parent.new
@@ -173,7 +266,19 @@ function M:entry(job)
 	-- over `M.main_id` at exact points the preamble doesn't give them (see
 	-- the comments inline). Not reached for "pin"/"focus".
 	if action == "reattach" then
-		if not M.path then
+		-- Only meant for the fresh-process restore case: M.path restored
+		-- from DDS with this instance's tab tracking never yet initialized.
+		-- M.main_id being non-nil means a real "pin"/"focus"/"reattach" has
+		-- already run in this process -- most importantly, `ps.pub_to`
+		-- delivers back to the *publishing* instance's own `ps.sub_remote`
+		-- (confirmed empirically), so a plain `pin` immediately triggers
+		-- this same "reattach" dispatch on itself, right after tab_create
+		-- has already left the new pin tab active. Without this guard, that
+		-- makes M.main_id get clobbered with the pin tab's own id below,
+		-- which excludes the real pin tab from pin_index()'s cwd fallback
+		-- and creates a second, duplicate tab for it every single time
+		-- something is pinned.
+		if not M.path or M.main_id then
 			return
 		end
 
@@ -196,6 +301,15 @@ function M:entry(job)
 		end
 
 		ya.emit("tab_create", { Url(M.path) })
+		-- Push the pinned tab to the very end of cx.tabs, right after
+		-- creating it. Keeps the number-key (`1`-`9`)/`]`/`[`/`{`/`}`
+		-- collision risk confined to the *last* slot for whatever tabs the
+		-- user already had open, instead of wherever tab_create happened to
+		-- insert it (cursor+1, i.e. potentially in the middle of the list).
+		-- Safe to queue right after tab_create: the insertion itself is
+		-- synchronous (only the directory read is async), and tab_swap does
+		-- no I/O of its own.
+		ya.emit("tab_swap", { "bot" })
 		-- tab_create is async and activates the tab it creates -- switching
 		-- back to M.main_id has to wait until that's landed, hence the
 		-- follow-up dispatch instead of doing it inline here.
@@ -278,6 +392,9 @@ function M:entry(job)
 		-- tab_create activates the new tab itself, which is what leaves focus
 		-- on the pinned folder right after pinning -- do not switch back.
 		ya.emit("tab_create", { target })
+		-- Push it to the very end of cx.tabs -- see the matching comment in
+		-- the "reattach" branch above for why.
+		ya.emit("tab_swap", { "bot" })
 	elseif action == "focus" then
 		if not pidx then
 			return
