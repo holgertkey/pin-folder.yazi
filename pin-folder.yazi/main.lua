@@ -91,8 +91,36 @@ local function pin_focus()
 end
 
 -- Border drawn around whichever of Parent/Current currently has input focus,
--- while something is pinned. Change the color here to taste.
-local FOCUS_STYLE = ui.Style():fg("yellow"):bold(true)
+-- while something is pinned. Derived from th.tabs.active's own background
+-- (the theme's chosen "active tab" accent color) rather than a hardcoded
+-- color, so it shifts with whatever flavor/theme is active instead of
+-- clashing with it -- same pattern Tabs.redraw already uses elsewhere in
+-- this file (`style.active:bg()`) to turn an active-tab style into a
+-- plain foreground color. Computed fresh on every call rather than cached
+-- as a module-level constant: every other `th.*` read in this file (and
+-- in yazi's own preset components) happens inside a function that runs at
+-- render time, never at bare top-level load time, so this follows that
+-- same convention rather than risking `th` not being populated yet when
+-- this file is first required.
+--
+-- Falls back through bg -> fg -> a literal color: a flavor is free to
+-- style `tabs.active` with only a `fg` (recoloring/underlining the text)
+-- and no `bg` at all, in which case `:bg()` resolves to the unset
+-- "reset" this function's own base style started from -- using that
+-- directly as our line's foreground would make the indicator invisible
+-- (identical to plain terminal-default text) rather than merely
+-- off-palette, on any such theme.
+local function focus_style()
+	local style = ui.Style():fg("reset"):bg("reset"):patch(th.tabs.active)
+	local accent = style:bg()
+	if not accent or accent == "reset" then
+		accent = style:fg()
+	end
+	if not accent or accent == "reset" then
+		accent = "yellow"
+	end
+	return ui.Style():fg(accent):bold(true)
+end
 
 function M:setup()
 	ps.sub_remote("@pin-folder", function(body)
@@ -294,7 +322,7 @@ function M:setup()
 		-- (those have to stay full-width, or the content below them would
 		-- be pushed down without actually being narrowed to match).
 		local original = target == 1 and original_1 or original_2
-		local focus_line = ui.Border(ui.Edge.TOP):area(original:pad(ui.Pad.x(2))):type(ui.Border.PLAIN):style(FOCUS_STYLE)
+		local focus_line = ui.Border(ui.Edge.TOP):area(original:pad(ui.Pad.x(2))):type(ui.Border.PLAIN):style(focus_style())
 
 		-- The vertical rail lines either side of Current (rail-left,
 		-- between Parent/Current, and rail-right, between Current/Preview)

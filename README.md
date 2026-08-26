@@ -120,15 +120,18 @@ leaving it open with only the pinned tab showing -- the pinned tab doesn't
 count as a tab worth staying open for by itself.
 
 While something is pinned, whichever pane -- `Parent` or `Current` -- is
-currently receiving input gets a yellow line above it, inset 2 columns from
-each side, so it's clear at a glance where `' '` left you. Both panes
+currently receiving input gets a colored line above it, inset 2 columns
+from each side, so it's clear at a glance where `' '` left you. The color
+follows your active theme/flavor (it's `th.tabs.active`'s own background
+color, the same accent the active tab in the tab bar uses), not a fixed
+color, so it won't clash no matter what theme is active. Both panes
 reserve that top row at all times, whether or not they currently have
 focus, so neither one changes height (and neither one's vertical borders
 change length) when focus toggles between them. The vertical border lines
 either side of `Current` are extended up onto that reserved row too, so
-they stay unbroken instead of leaving a gap at the top. Change the
-color/style in `FOCUS_STYLE` near the top of `pin-folder.yazi/main.lua` to
-taste.
+they stay unbroken instead of leaving a gap at the top. To use a fixed
+color instead of following the theme, edit the `accent`/fallback color in
+`focus_style()` near the top of `pin-folder.yazi/main.lua`.
 
 ## Known limitations
 

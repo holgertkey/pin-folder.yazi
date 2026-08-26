@@ -16,7 +16,9 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
 - Toggle input focus between the working tab and the pinned tab (`' '`).
 - A colored line above whichever pane (`Parent`/`Current`) currently has
   input focus while something is pinned, inset 2 columns from each side,
-  so `focus` toggling is visible. Both panes reserve the line's row at all
+  so `focus` toggling is visible. Its color follows the active theme/flavor
+  (`th.tabs.active`'s own accent color) rather than a fixed color. Both
+  panes reserve the line's row at all
   times, so neither one's height (or vertical borders) changes when focus
   toggles between them. The vertical border lines flanking `Current` are
   extended up onto that reserved row too, so they stay unbroken.
