@@ -15,7 +15,8 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
   interactive, independently navigable tab (`' p`).
 - Toggle input focus between the working tab and the pinned tab (`' '`).
 - A colored line above whichever pane (`Parent`/`Current`) currently has
-  input focus while something is pinned, so `focus` toggling is visible.
+  input focus while something is pinned, inset 2 columns from each side,
+  so `focus` toggling is visible.
 - The pinned path persists across yazi restarts (via DDS).
 - The pinned tab stays visible in the tab bar, marked with a pin icon (📌)
   next to its name, and is pushed to the very front of the tab list at pin

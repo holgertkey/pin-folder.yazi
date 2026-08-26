@@ -282,8 +282,13 @@ function M:setup()
 		self._chunks[target] = original:pad(ui.Pad.top(1))
 		tab_build(self, ...)
 
+		-- Inset 2 columns from both sides so the line doesn't run flush
+		-- edge-to-edge -- purely cosmetic, drawn against a separate,
+		-- narrower rect than the one used above to push the content down
+		-- (that one has to stay full-width, or the content below it would
+		-- be pushed down without actually being narrowed to match).
 		self._base = ya.list_merge(self._base or {}, {
-			ui.Border(ui.Edge.TOP):area(original):type(ui.Border.PLAIN):style(FOCUS_STYLE),
+			ui.Border(ui.Edge.TOP):area(original:pad(ui.Pad.x(2))):type(ui.Border.PLAIN):style(FOCUS_STYLE),
 		})
 	end
 end

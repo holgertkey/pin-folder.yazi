@@ -120,9 +120,10 @@ leaving it open with only the pinned tab showing -- the pinned tab doesn't
 count as a tab worth staying open for by itself.
 
 While something is pinned, whichever pane -- `Parent` or `Current` -- is
-currently receiving input gets a yellow line above it, so it's clear at a
-glance where `' '` left you. Change the color/style in `FOCUS_STYLE` near the
-top of `pin-folder.yazi/main.lua` to taste.
+currently receiving input gets a yellow line above it, inset 2 columns from
+each side, so it's clear at a glance where `' '` left you. Change the
+color/style in `FOCUS_STYLE` near the top of `pin-folder.yazi/main.lua` to
+taste.
 
 ## Known limitations
 
