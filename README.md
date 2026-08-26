@@ -9,9 +9,8 @@ files, see live previews, all without leaving the `Parent` column. Its cursor
 is independent from the `Current` column's cursor.
 
 > **Status:** work in progress, not yet published as a package. See
-> [`.debug/concept.md`](.debug/concept.md) for design notes, known issues and
-> what's still being worked on, and [`CHANGELOG.md`](CHANGELOG.md) for a
-> user-facing summary of what's shipped so far.
+> [`CHANGELOG.md`](CHANGELOG.md) for a user-facing summary of what's shipped
+> so far.
 
 ## Requirements
 
@@ -54,20 +53,11 @@ not -- it's recreated/reattached on demand.
 
 Not packaged yet. Manual setup:
 
-This repo also keeps `init.lua` and `keymap.toml` for local development --
-they're symlinked into `~/.config/yazi/` so edits here take effect on the next
-yazi restart:
-
 ```sh
-ln -s "$(pwd)/pin-folder.yazi" ~/.config/yazi/plugins/pin-folder.yazi
-ln -s "$(pwd)/init.lua" ~/.config/yazi/init.lua
-ln -s "$(pwd)/keymap.toml" ~/.config/yazi/keymap.toml
+ln -s "$(pwd)" ~/.config/yazi/plugins/pin-folder.yazi
 ```
 
-If you already have your own `init.lua`/`keymap.toml`, add the relevant bits
-instead of symlinking the whole file:
-
-`init.lua`:
+Add to your own `init.lua`:
 
 ```lua
 require("pin-folder"):setup()
@@ -139,7 +129,7 @@ change length) when focus toggles between them. The vertical border lines
 either side of `Current` are extended up onto that reserved row too, so
 they stay unbroken instead of leaving a gap at the top. To use a fixed
 color instead of following the theme, edit the `accent`/fallback color in
-`focus_style()` near the top of `pin-folder.yazi/main.lua`.
+`focus_style()` near the top of `main.lua`.
 
 ## Known limitations
 

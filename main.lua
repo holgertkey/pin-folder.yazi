@@ -1,7 +1,7 @@
 --- @sync entry
 --- @since 26.8.15
 
--- pin.yazi
+-- pin-folder.yazi
 --
 -- Pins a directory as a second, fully interactive tab whose listing is
 -- displayed in the Parent column. The pinned tab is a real yazi tab, so

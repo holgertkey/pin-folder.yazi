@@ -1,6 +1,10 @@
 /target
 CLAUDE.md
 
+# Local dev-convenience config, not part of the published plugin
+/init.lua
+/keymap.toml
+
 # Debug and testing files
 .debug/
 .claude/
