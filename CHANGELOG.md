@@ -18,7 +18,8 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
   input focus while something is pinned, inset 2 columns from each side,
   so `focus` toggling is visible. Both panes reserve the line's row at all
   times, so neither one's height (or vertical borders) changes when focus
-  toggles between them.
+  toggles between them. The vertical border lines flanking `Current` are
+  extended up onto that reserved row too, so they stay unbroken.
 - The pinned path persists across yazi restarts (via DDS).
 - The pinned tab stays visible in the tab bar, marked with a pin icon (📌)
   next to its name, and is pushed to the very front of the tab list at pin

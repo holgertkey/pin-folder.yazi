@@ -294,9 +294,41 @@ function M:setup()
 		-- (those have to stay full-width, or the content below them would
 		-- be pushed down without actually being narrowed to match).
 		local original = target == 1 and original_1 or original_2
-		self._base = ya.list_merge(self._base or {}, {
-			ui.Border(ui.Edge.TOP):area(original:pad(ui.Pad.x(2))):type(ui.Border.PLAIN):style(FOCUS_STYLE),
-		})
+		local focus_line = ui.Border(ui.Edge.TOP):area(original:pad(ui.Pad.x(2))):type(ui.Border.PLAIN):style(FOCUS_STYLE)
+
+		-- The vertical rail lines either side of Current (rail-left,
+		-- between Parent/Current, and rail-right, between Current/Preview)
+		-- are both built by yazi's own Rails component from *Current's*
+		-- chunk alone (confirmed against `rails.lua`: both copy c[2]'s y/h
+		-- untouched, only overriding x/w) -- so now that c[2] is always
+		-- padded a row down (above), both rails always stop a row short of
+		-- the top, regardless of focus. Draw a 1-row extension for each,
+		-- in the same style/symbol Rail:redraw() itself uses, positioned
+		-- exactly at Current's own left/right edge on the reserved top
+		-- row, so the lines read as continuous instead of leaving a gap.
+		-- Gated on the exact same conditions `rails.lua` itself uses
+		-- (`c[1].w > 0` / `c[3].w > 0`) -- rail-left/rail-right don't exist
+		-- at all when Parent/Preview is collapsed to zero width, and an
+		-- unconditional extension would draw a floating glyph with no rail
+		-- underneath it in that case.
+		local extras = { focus_line }
+		if original_2.w > 0 then
+			local gap_row = original_2:pad(ui.Pad.bottom(original_2.h - 1))
+			if self._chunks[1].w > 0 then
+				extras[#extras + 1] = ui.Bar(ui.Edge.LEFT)
+					:area(gap_row:pad(ui.Pad.right(gap_row.w - 1)))
+					:symbol(th.mgr.border_symbol)
+					:style(th.mgr.border_style)
+			end
+			if self._chunks[3] and self._chunks[3].w > 0 then
+				extras[#extras + 1] = ui.Bar(ui.Edge.LEFT)
+					:area(gap_row:pad(ui.Pad.left(gap_row.w - 1)))
+					:symbol(th.mgr.border_symbol)
+					:style(th.mgr.border_style)
+			end
+		end
+
+		self._base = ya.list_merge(self._base or {}, extras)
 	end
 end
 
