@@ -17,13 +17,17 @@
 --   tab (Tab:build passes the same tab to Rails/Markers as to Parent), so
 --   they may not line up with the pinned listing. Cosmetic only.
 -- - Counts as one more tab against yazi's 9-tab limit while pinned.
--- - The pinned tab is hidden from the tab bar and pushed to the end of
---   cx.tabs at pin time, so it stays out of the way of the user's own
---   tabs (numbered/switched by their own visible order). But yazi's
---   number keys (1-9), `]`/`[`, `{`/`}` are hardcoded to absolute cx.tabs
---   positions with no concept of a hidden tab, and a tab the user creates
+-- - The pinned tab is shown in the tab bar (marked with a pin icon) and
+--   pushed to the end of cx.tabs at pin time, so it stays out of the way
+--   of the user's own tabs (numbered by their own visible order plus the
+--   pinned one last). But yazi's number keys (1-9), `]`/`[`, `{`/`}` are
+--   hardcoded to absolute cx.tabs positions, and a tab the user creates
 --   *after* pinning can land ahead of the pinned one and shift things
 --   again -- not re-enforced continuously. See .debug/concept.md.
+-- - Closing the pinned tab via yazi's default Ctrl-C ("close") is blocked
+--   while it has input focus -- `' p` (unpin) is the only way to close it.
+--   This only covers the *default* keybinding; a custom keymap that binds
+--   `tab_close` directly to some other key bypasses the plugin entirely.
 
 local M = {}
 
@@ -120,59 +124,19 @@ function M:setup()
 		}
 	end
 
-	-- Hide *only* the pinned tab from the tab bar -- not the whole bar.
-	-- Earlier versions hid the entire bar whenever something was pinned,
-	-- which also hid the user's own unrelated tabs if they had any open.
-	-- The pinned tab is a real, generic tab -- shown, it invites the user
-	-- to switch/close it via yazi's own tab commands (number keys, mouse
-	-- clicks, `<C-c>`/`close`), which bypass this plugin entirely and
-	-- desync M.path/M.pin_id/M.main_id from the tab that command just
-	-- touched. This reduces that risk for the user's *own* tabs (they're
-	-- shown and clickable normally, numbered by their own visible order),
-	-- but not for the pinned tab itself: yazi's number keys (`1`-`9`),
-	-- `]`/`[`, `{`/`}` are all hardcoded to *absolute* cx.tabs positions
-	-- and have no concept of a hidden tab, so they can still land on it
-	-- (see the `tab_swap "bot"` calls below, which push the pinned tab to
-	-- the very end right after creating it specifically so this only
-	-- affects the *last* numeric slot for the user's own tabs at pin-time,
-	-- not all of them -- but a tab the user creates *after* pinning can
-	-- still land ahead of the pinned one and shift things again; not
-	-- re-enforced continuously, see .debug/concept.md).
-	--
-	-- Reimplements `Tabs:redraw`/`:click` rather than filtering input to
-	-- the originals, since neither takes the tab list as a parameter --
-	-- both read `cx.tabs` directly. This couples to more of yazi's internal
-	-- rendering/click-offset math than the rest of this plugin does
-	-- (`self:style()`, `self:inner_width()`, `th.tabs.*`, `self._offsets`)
-	-- -- a deliberate trade accepted for this specific fix, not the default
-	-- approach elsewhere in this file.
-	local function visible_tabs()
-		local pidx = pin_index()
-		if not pidx then
-			return nil
-		end
-		local visible = {}
-		for i = 1, #cx.tabs do
-			if i ~= pidx then
-				visible[#visible + 1] = i
-			end
-		end
-		return visible
-	end
-
-	local tabs_height = Tabs.height
-	Tabs.height = function()
-		local visible = visible_tabs()
-		if not visible then
-			return tabs_height()
-		end
-		return #visible > 1 and 1 or 0
-	end
+	-- Mark the pinned tab in the bar instead of hiding it (earlier versions
+	-- hid it entirely -- see .debug/concept.md item 15/17 for why that was
+	-- reconsidered): prefix its label with a pin icon so it's identifiable
+	-- at a glance, while staying a normal, visible, clickable tab bar entry
+	-- like the user's own tabs. Height/click behavior are left as yazi's
+	-- own -- only the label/style for one entry differs, so there's no need
+	-- to reimplement the offset/click math the way the old hide-filter did.
+	local PIN_ICON = "📌"
 
 	local tabs_redraw = Tabs.redraw
 	Tabs.redraw = function(self)
-		local visible = visible_tabs()
-		if not visible then
+		local pidx = pin_index()
+		if not pidx then
 			return tabs_redraw(self)
 		end
 		if self.height() < 1 then
@@ -185,10 +149,11 @@ function M:setup()
 		}
 
 		local pos = lines[1]:width()
-		local max = math.floor(self:inner_width() / #visible)
-		self._offsets = {}
-		for vi, i in ipairs(visible) do
-			local name = ui.truncate(string.format(" %d %s ", vi, cx.tabs[i].name), { max = max })
+		local max = math.floor(self:inner_width() / #cx.tabs)
+		for i = 1, #cx.tabs do
+			local label = i == pidx and string.format(" %d %s %s ", i, PIN_ICON, cx.tabs[i].name)
+				or string.format(" %d %s ", i, cx.tabs[i].name)
+			local name = ui.truncate(label, { max = max })
 			if i == cx.tabs.idx then
 				lines[#lines + 1] = ui.Line {
 					ui.Span(th.tabs.sep_inner.open):fg(style.active:bg()):bg(style.inactive:bg()),
@@ -198,28 +163,11 @@ function M:setup()
 			else
 				lines[#lines + 1] = ui.Line(name):style(style.inactive)
 			end
-			self._offsets[vi], pos = pos, pos + lines[#lines]:width()
+			self._offsets[i], pos = pos, pos + lines[#lines]:width()
 		end
 
 		lines[#lines + 1] = ui.Line(th.tabs.sep_outer.close):fg(style.inactive:bg())
 		return ui.Line(lines):area(self._area)
-	end
-
-	local tabs_click = Tabs.click
-	Tabs.click = function(self, event, up)
-		local visible = visible_tabs()
-		if not visible then
-			return tabs_click(self, event, up)
-		end
-		if up or event.is_middle then
-			return
-		end
-		for vi = #visible, 1, -1 do
-			if event.x >= self._offsets[vi] then
-				ya.emit("tab_switch", { visible[vi] - 1 })
-				break
-			end
-		end
 	end
 
 	local parent_new = Parent.new
@@ -262,9 +210,12 @@ end
 function M:entry(job)
 	local action = job.args[1]
 
-	-- Handled ahead of the generic preamble below: both need full control
-	-- over `M.main_id` at exact points the preamble doesn't give them (see
-	-- the comments inline). Not reached for "pin"/"focus".
+	-- Handled ahead of the generic preamble below: "reattach"/"settle" need
+	-- full control over `M.main_id` at exact points the preamble doesn't
+	-- give them, and "close" wants to stay fully inert (no `M.main_id`
+	-- write at all) since it's the most frequently pressed, often
+	-- pin-unrelated action reaching this function (see the comments
+	-- inline). Not reached for "pin"/"focus".
 	if action == "reattach" then
 		-- Only meant for the fresh-process restore case: M.path restored
 		-- from DDS with this instance's tab tracking never yet initialized.
@@ -359,6 +310,28 @@ function M:entry(job)
 				ui.render()
 			end)()
 		end)
+		return
+	elseif action == "close" then
+		-- Bound (in keymap.toml) to Ctrl-C in place of yazi's default
+		-- `close`, so the pinned tab can't be closed by its own most
+		-- reachable default keybinding -- `' p` (unpin) is the only legal
+		-- way to close it. Handled here, ahead of the generic preamble
+		-- below, so a frequently-pressed, pin-unrelated key doesn't
+		-- opportunistically mutate `M.main_id` (which would arm
+		-- "reattach"'s `M.main_id`-set guard during the narrow startup
+		-- window before a restore's self-dispatched "reattach" has
+		-- landed) -- pin_focus() is read locally instead.
+		local _, on_pin = pin_focus()
+		-- Only blocks while the pinned tab isn't the sole tab left --
+		-- with just the pinned tab open, `close` quitting yazi entirely
+		-- isn't "closing the pinned tab", it's quitting the app (matches
+		-- vanilla `close`'s own "close the current tab, or quit if it's
+		-- last" semantics), so let it through rather than leaving Ctrl-C
+		-- a dead key with no way to quit.
+		if on_pin and #cx.tabs > 1 then
+			return
+		end
+		ya.emit("close", {})
 		return
 	end
 

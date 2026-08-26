@@ -19,7 +19,7 @@ is independent from the `Current` column's cursor.
 
 ## How it works
 
-The pinned directory is backed by a real, normally-inactive yazi tab. Three
+The pinned directory is backed by a real, normally-inactive yazi tab. Several
 built-in components are overridden:
 
 - `Parent` always renders that tab's `current` folder instead of the real
@@ -28,6 +28,9 @@ built-in components are overridden:
   the pinned tab is temporarily made active for input (via `focus`).
 - `Tab.build` draws the focus indicator line described under Keybindings
   below.
+- `Tabs.redraw` prefixes the pinned tab's label with a pin icon (📌) in the
+  tab bar, so it's identifiable at a glance -- it stays a normal, visible,
+  clickable tab like your own.
 
 Because the pinned pane is a genuine tab, every built-in yazi command
 (navigation, `create`/`remove`/`rename`/`yank`/`paste`, previews) works on it
@@ -68,6 +71,7 @@ require("pin-folder"):setup()
 prepend_keymap = [
 	{ on = [ "'", "p" ], run = "plugin pin-folder pin", desc = "Pin/unpin hovered folder in the Parent column" },
 	{ on = [ "'", "f" ], run = "plugin pin-folder focus", desc = "Toggle focus into the pinned folder" },
+	{ on = [ "<C-c>" ], run = "plugin pin-folder close", desc = "Close the current tab, or quit if it's last (blocked on the pinned tab -- use ' p to unpin instead)" },
 ]
 ```
 
@@ -76,11 +80,23 @@ prepend_keymap = [
 
 - `' p` -- pin the hovered directory (or the current one, if nothing directory
   is hovered) into the `Parent` column and switch input focus into it; press
-  again (from anywhere) to unpin.
+  again (from anywhere) to unpin. **This is the only legal way to close the
+  pinned tab** -- see below.
 - `' f` -- toggle input focus between your working tab and the pinned one.
   While focused on the pinned tab, all normal navigation and file operations
   apply to it, and `Current`/`Preview` stay showing your working tab
   untouched.
+
+The pinned tab stays visible in the tab bar, marked with a 📌 next to its
+name, so it's identifiable and clickable like any other tab. It's protected
+from yazi's default `<C-c>` ("close") while it has input focus and other tabs
+are still open -- that key is remapped (above) to a plugin action that no-ops
+on the pinned tab instead of closing it, so `' p` is the only
+default-keybinding way to close it. If the pinned tab is the *only* tab left,
+`<C-c>` still quits yazi rather than becoming a dead key (matching yazi's own
+"close the current tab, or quit if it's last" behavior for `close`). This
+doesn't guard against a custom keymap binding `tab_close` directly to some
+other key.
 
 While something is pinned, whichever pane -- `Parent` or `Current` -- is
 currently receiving input gets a yellow line above it, so it's clear at a
@@ -96,6 +112,9 @@ top of `pin-folder.yazi/main.lua` to taste.
   tab, not the pinned one -- may not line up with the pinned listing rows.
   Cosmetic only.
 - Counts as one more tab against yazi's 9-tab limit while pinned.
+- Only yazi's *default* `<C-c>` binding is guarded against closing the pinned
+  tab. A custom keymap that binds `tab_close` (or some other command)
+  directly to a different key bypasses the plugin entirely.
 
 Yazi has no plugin hot-reload -- restart it (`q`, then `yazi`) after editing
 `main.lua`, `init.lua` or `keymap.toml`.

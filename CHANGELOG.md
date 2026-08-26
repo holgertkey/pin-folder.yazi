@@ -17,11 +17,14 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
 - A colored line above whichever pane (`Parent`/`Current`) currently has
   input focus while something is pinned, so `focus` toggling is visible.
 - The pinned path persists across yazi restarts (via DDS).
-- The pinned tab is hidden from the tab bar (the user's own tabs, if any,
-  stay visible and correctly numbered) and pushed to the end of the tab
-  list at pin time, reducing the chance of switching to or closing it by
-  accident via yazi's own tab commands (number keys, mouse clicks). Not a
-  complete guarantee -- see the plugin's "Known limitations" comment.
+- The pinned tab stays visible in the tab bar, marked with a pin icon (📌)
+  next to its name, and is pushed to the end of the tab list at pin time so
+  it stays out of the way of the user's own tabs' numbering. Not a complete
+  guarantee -- see the plugin's "Known limitations" comment.
+- Closing the pinned tab via yazi's default `<C-c>` ("close") is now
+  blocked while it has input focus and other tabs are still open -- `' p`
+  (unpin) is the only default-keybinding way to close it. If the pinned
+  tab is the only tab left, `<C-c>` still quits yazi as usual.
 
 ### Fixed
 
