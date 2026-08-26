@@ -265,10 +265,15 @@ function M:setup()
 
 	-- Mark whichever pane (Parent while on_pin, Current otherwise) is
 	-- currently receiving input, so `focus` toggling is visible at a glance.
-	-- The target chunk is padded by one row on top *before* the real build()
-	-- runs (so its content is pushed down out of the way), then the border
-	-- is drawn using the original, unpadded chunk -- using the padded one
-	-- here would draw the line on the same row as the content, not above it.
+	-- Both chunks are padded by one row on top *unconditionally* (not just
+	-- the focused one) *before* the real build() runs, so neither pane's
+	-- height changes when focus toggles between them -- only the line's
+	-- visibility does. Padding only the focused chunk (the earlier
+	-- approach) made that pane shrink by a row whenever it gained focus
+	-- and snap back to full height when it lost it, a visible size jump.
+	-- The border itself is drawn using the original, unpadded chunk for
+	-- whichever pane is the current target -- using the padded one here
+	-- would draw the line on the same row as the content, not above it.
 	local tab_build = Tab.build
 	Tab.build = function(self, ...)
 		if not M.path then
@@ -277,16 +282,18 @@ function M:setup()
 
 		local _, on_pin = pin_focus()
 		local target = on_pin and 1 or 2
-		local original = self._chunks[target]
+		local original_1, original_2 = self._chunks[1], self._chunks[2]
 
-		self._chunks[target] = original:pad(ui.Pad.top(1))
+		self._chunks[1] = original_1:pad(ui.Pad.top(1))
+		self._chunks[2] = original_2:pad(ui.Pad.top(1))
 		tab_build(self, ...)
 
 		-- Inset 2 columns from both sides so the line doesn't run flush
 		-- edge-to-edge -- purely cosmetic, drawn against a separate,
-		-- narrower rect than the one used above to push the content down
-		-- (that one has to stay full-width, or the content below it would
+		-- narrower rect than the ones used above to push the content down
+		-- (those have to stay full-width, or the content below them would
 		-- be pushed down without actually being narrowed to match).
+		local original = target == 1 and original_1 or original_2
 		self._base = ya.list_merge(self._base or {}, {
 			ui.Border(ui.Edge.TOP):area(original:pad(ui.Pad.x(2))):type(ui.Border.PLAIN):style(FOCUS_STYLE),
 		})

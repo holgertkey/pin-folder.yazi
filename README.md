@@ -121,9 +121,11 @@ count as a tab worth staying open for by itself.
 
 While something is pinned, whichever pane -- `Parent` or `Current` -- is
 currently receiving input gets a yellow line above it, inset 2 columns from
-each side, so it's clear at a glance where `' '` left you. Change the
-color/style in `FOCUS_STYLE` near the top of `pin-folder.yazi/main.lua` to
-taste.
+each side, so it's clear at a glance where `' '` left you. Both panes
+reserve that top row at all times, whether or not they currently have
+focus, so neither one changes height (and neither one's vertical borders
+change length) when focus toggles between them. Change the color/style in
+`FOCUS_STYLE` near the top of `pin-folder.yazi/main.lua` to taste.
 
 ## Known limitations
 
