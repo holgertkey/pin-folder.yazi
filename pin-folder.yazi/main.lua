@@ -25,9 +25,12 @@
 --   *after* pinning can land ahead of the pinned one and shift things
 --   again -- not re-enforced continuously. See .debug/concept.md.
 -- - Closing the pinned tab via yazi's default Ctrl-C ("close") is blocked
---   while it has input focus -- `' p` (unpin) is the only way to close it.
---   This only covers the *default* keybinding; a custom keymap that binds
---   `tab_close` directly to some other key bypasses the plugin entirely.
+--   while it has input focus and other tabs are open -- `' p` (unpin) is
+--   the only way to close it. This only covers the *default* keybinding;
+--   a custom keymap that binds `tab_close` directly to some other key
+--   bypasses the plugin entirely.
+-- - Closing your last real (non-pinned) tab quits yazi entirely rather
+--   than leaving it open with only the pinned tab remaining.
 
 local M = {}
 
@@ -321,14 +324,39 @@ function M:entry(job)
 		-- "reattach"'s `M.main_id`-set guard during the narrow startup
 		-- window before a restore's self-dispatched "reattach" has
 		-- landed) -- pin_focus() is read locally instead.
-		local _, on_pin = pin_focus()
-		-- Only blocks while the pinned tab isn't the sole tab left --
-		-- with just the pinned tab open, `close` quitting yazi entirely
-		-- isn't "closing the pinned tab", it's quitting the app (matches
-		-- vanilla `close`'s own "close the current tab, or quit if it's
-		-- last" semantics), so let it through rather than leaving Ctrl-C
-		-- a dead key with no way to quit.
-		if on_pin and #cx.tabs > 1 then
+		local pidx, on_pin = pin_focus()
+		if on_pin then
+			-- Only blocks while the pinned tab isn't the sole tab left --
+			-- with just the pinned tab open, `close` quitting yazi entirely
+			-- isn't "closing the pinned tab", it's quitting the app (matches
+			-- vanilla `close`'s own "close the current tab, or quit if it's
+			-- last" semantics), so let it through rather than leaving Ctrl-C
+			-- a dead key with no way to quit.
+			if #cx.tabs > 1 then
+				return
+			end
+			ya.emit("close", {})
+			return
+		end
+
+		-- Closing a real (non-pinned) tab. Yazi's own `close` treats the
+		-- pinned tab as just another live tab when deciding "is this the
+		-- last one" -- so with one real tab plus the pinned one (2 total),
+		-- vanilla `close` would just close the real tab and leave the
+		-- pinned tab as the sole surviving "tab", quietly keeping yazi open
+		-- showing only an accessory view. Count the pinned tab out of that
+		-- decision: if this is the last *real* tab, quit outright instead
+		-- (`quit` is exactly what `close` itself falls back to once
+		-- `#cx.tabs <= 1` -- see yazi's own `mgr::close` actor -- so this
+		-- mirrors vanilla behavior, just with the pinned tab discounted).
+		local real_tabs = pidx and (#cx.tabs - 1) or #cx.tabs
+		if real_tabs <= 1 then
+			-- Only take the explicit `quit` path when a pinned tab is
+			-- actually in the count being discounted (`pidx` non-nil) --
+			-- with nothing pinned this is just `ya.emit("close", {})`,
+			-- identical to every prior close on the last tab, so a
+			-- no-pin session never depends on this new `quit` call.
+			ya.emit(pidx and "quit" or "close", {})
 			return
 		end
 		ya.emit("close", {})

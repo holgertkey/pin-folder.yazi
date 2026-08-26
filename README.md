@@ -98,6 +98,10 @@ default-keybinding way to close it. If the pinned tab is the *only* tab left,
 doesn't guard against a custom keymap binding `tab_close` directly to some
 other key.
 
+Closing your last *real* (non-pinned) tab quits yazi entirely instead of
+leaving it open with only the pinned tab showing -- the pinned tab doesn't
+count as a tab worth staying open for by itself.
+
 While something is pinned, whichever pane -- `Parent` or `Current` -- is
 currently receiving input gets a yellow line above it, so it's clear at a
 glance where `' f` left you. Change the color/style in `FOCUS_STYLE` near the

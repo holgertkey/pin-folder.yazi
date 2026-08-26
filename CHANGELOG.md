@@ -25,6 +25,9 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
   blocked while it has input focus and other tabs are still open -- `' p`
   (unpin) is the only default-keybinding way to close it. If the pinned
   tab is the only tab left, `<C-c>` still quits yazi as usual.
+- Closing your last real (non-pinned) tab now quits yazi entirely, instead
+  of leaving it open with only the pinned tab remaining as an orphaned
+  `Current`.
 
 ### Fixed
 

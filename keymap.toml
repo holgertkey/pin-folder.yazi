@@ -2,5 +2,5 @@
 prepend_keymap = [
 	{ on = [ "'", "p" ], run = "plugin pin-folder pin", desc = "Pin/unpin hovered folder in the Parent column" },
 	{ on = [ "'", "f" ], run = "plugin pin-folder focus", desc = "Toggle focus into the pinned folder" },
-	{ on = [ "<C-c>" ], run = "plugin pin-folder close", desc = "Close the current tab, or quit if it's last (blocked on the pinned tab -- use ' p to unpin instead)" },
+	{ on = [ "<C-c>" ], run = "plugin pin-folder close", desc = "Close the current tab, or quit if it's the last real one (blocked on the pinned tab -- use ' p to unpin instead)" },
 ]
