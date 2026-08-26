@@ -185,22 +185,57 @@ function M:setup()
 		return me
 	end
 
-	-- Clicking a pane should switch input focus into it first, same as `'
-	-- '` would, *before* the click itself is handled -- otherwise a click
-	-- on an entity fires `ya.emit("reveal", ...)` (and Parent's blank-space
-	-- fallback fires `ya.emit("leave", {})`) against whatever tab happens
-	-- to be `cx.active` already, which can be the *other* pane's tab (e.g.
-	-- clicking an item in Parent while focus is still on Current emits
-	-- `reveal` against the working tab, not the pinned one whose listing
-	-- is actually showing there). `up`/middle-click are already no-ops in
-	-- the originals, so both overrides skip the switch for those too.
+	-- Clicking an entity in a pane should switch input focus into it
+	-- first, same as `' '` would, *before* the click itself is handled --
+	-- otherwise `Entity:click()`'s `ya.emit("reveal", ...)` fires against
+	-- whatever tab happens to be `cx.active` already, which can be the
+	-- *other* pane's tab (e.g. clicking an item in Parent while focus is
+	-- still on Current would reveal it in the working tab, not the pinned
+	-- one whose listing is actually showing there). `up`/middle-click are
+	-- already no-ops in the originals, so this skips the switch for those.
 	local parent_click = Parent.click
 	Parent.click = function(self, event, up)
-		if not (up or event.is_middle) then
-			local pidx, on_pin = pin_focus()
+		if up or event.is_middle then
+			return parent_click(self, event, up)
+		end
+
+		local pidx, on_pin = pin_focus()
+		local y = event.y - self._area.y + 1
+		if self._folder and self._folder.window and self._folder.window[y] then
 			if pidx and not on_pin then
 				ya.emit("tab_switch", { pidx - 1 })
 			end
+			return parent_click(self, event, up)
+		end
+
+		-- Blank-space click: familiar "click Parent to go up a level"
+		-- gesture (`leave`), but kept pointed at the WORKING tab, not the
+		-- pinned one -- mirroring vanilla yazi, where Parent normally *is*
+		-- Current's real parent, so clicking blank space there has always
+		-- meant "go up from Current", never "go up in some other pane".
+		-- Deliberately does *not* switch input focus (unlike the entity
+		-- case above): `leave` has no tab-index argument (confirmed
+		-- against `yazi-actor/src/mgr/leave.rs` -- it only ever acts on
+		-- `cx.active`), so the only way to target the working tab without
+		-- leaving focus there afterward is to switch to it, fire `leave`,
+		-- then switch immediately back -- all three `ya.emit` calls land
+		-- before the next render (same queued-dispatch ordering the entity
+		-- case and item 20 already rely on), so this never becomes visible
+		-- as an actual focus flicker.
+		if on_pin and event.is_left then
+			-- No `midx` means the working tab isn't where the plugin
+			-- thinks it is (e.g. closed via some path this plugin doesn't
+			-- track) -- fall through to a no-op, not to `parent_click`:
+			-- that would fire `leave` against `cx.active` (the pinned
+			-- tab), which is exactly the wrong-tab behavior this override
+			-- exists to avoid, not a reasonable fallback for it.
+			local midx = main_index()
+			if midx then
+				ya.emit("tab_switch", { midx - 1 })
+				ya.emit("leave", {})
+				ya.emit("tab_switch", { pidx - 1 })
+			end
+			return
 		end
 		return parent_click(self, event, up)
 	end

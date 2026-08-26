@@ -34,7 +34,9 @@ built-in components are overridden:
 - `Parent.click`/`Current.click` switch input focus into whichever pane you
   click before the click itself is handled, so clicking a file or folder
   always acts on the pane you clicked, not whichever pane happened to have
-  focus already.
+  focus already. Clicking blank space in `Parent` is the one exception --
+  it always navigates the working tab up a level, without switching focus,
+  matching vanilla yazi's own "click Parent to go up" gesture.
 
 Because the pinned pane is a genuine tab, every built-in yazi command
 (navigation, `create`/`remove`/`rename`/`yank`/`paste`, previews) works on it
@@ -94,8 +96,11 @@ prepend_keymap = [
 Clicking a file or folder in either `Parent` or `Current` also switches input
 focus into that pane first, same as `' '` would -- so mouse and keyboard
 agree on which pane a click actually acts on. Clicking blank space in
-`Parent` (which navigates up a level) does this too; blank space in
-`Current` is a no-op either way, so it doesn't switch focus.
+`Current` is a no-op either way, so it doesn't switch focus. Clicking blank
+space in `Parent` is different: it navigates your *working* tab up a level
+(the familiar "click Parent to go up" gesture, matching vanilla yazi) without
+switching focus at all -- your working tab moves up a level in the
+background regardless of which pane currently has input.
 
 The pinned tab stays visible in the tab bar, always first (number key `1`)
 and marked with a 📌 next to its name, so it's identifiable and clickable
