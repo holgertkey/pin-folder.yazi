@@ -71,7 +71,7 @@ require("pin-folder"):setup()
 prepend_keymap = [
 	{ on = [ "'", "p" ], run = "plugin pin-folder pin", desc = "Pin/unpin hovered folder in the Parent column" },
 	{ on = [ "'", "f" ], run = "plugin pin-folder focus", desc = "Toggle focus into the pinned folder" },
-	{ on = [ "<C-c>" ], run = "plugin pin-folder close", desc = "Close the current tab, or quit if it's last (blocked on the pinned tab -- use ' p to unpin instead)" },
+	{ on = [ "<C-c>" ], run = "plugin pin-folder close", desc = "Close the current tab, or quit if it's the last real one (blocked on the pinned tab -- use ' p to unpin instead)" },
 ]
 ```
 
@@ -87,8 +87,10 @@ prepend_keymap = [
   apply to it, and `Current`/`Preview` stay showing your working tab
   untouched.
 
-The pinned tab stays visible in the tab bar, marked with a 📌 next to its
-name, so it's identifiable and clickable like any other tab. It's protected
+The pinned tab stays visible in the tab bar, always first (number key `1`)
+and marked with a 📌 next to its name, so it's identifiable and clickable
+like any other tab -- this shifts the numbering of your own tabs up by one
+for as long as something is pinned. It's protected
 from yazi's default `<C-c>` ("close") while it has input focus and other tabs
 are still open -- that key is remapped (above) to a plugin action that no-ops
 on the pinned tab instead of closing it, so `' p` is the only

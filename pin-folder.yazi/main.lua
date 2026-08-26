@@ -18,12 +18,12 @@
 --   they may not line up with the pinned listing. Cosmetic only.
 -- - Counts as one more tab against yazi's 9-tab limit while pinned.
 -- - The pinned tab is shown in the tab bar (marked with a pin icon) and
---   pushed to the end of cx.tabs at pin time, so it stays out of the way
---   of the user's own tabs (numbered by their own visible order plus the
---   pinned one last). But yazi's number keys (1-9), `]`/`[`, `{`/`}` are
---   hardcoded to absolute cx.tabs positions, and a tab the user creates
---   *after* pinning can land ahead of the pinned one and shift things
---   again -- not re-enforced continuously. See .debug/concept.md.
+--   pushed to the very front of cx.tabs at pin time (always number key
+--   `1`), shifting the user's own tabs' numbers up by one. tab_create
+--   can never insert before it (yazi always inserts at cursor+1, which
+--   is at least 1), but an explicit tab-reorder command (`{`, "swap with
+--   previous") issued from the tab right after it can still swap it out
+--   of the front slot -- not re-enforced continuously. See .debug/concept.md.
 -- - Closing the pinned tab via yazi's default Ctrl-C ("close") is blocked
 --   while it has input focus and other tabs are open -- `' p` (unpin) is
 --   the only way to close it. This only covers the *default* keybinding;
@@ -255,15 +255,13 @@ function M:entry(job)
 		end
 
 		ya.emit("tab_create", { Url(M.path) })
-		-- Push the pinned tab to the very end of cx.tabs, right after
-		-- creating it. Keeps the number-key (`1`-`9`)/`]`/`[`/`{`/`}`
-		-- collision risk confined to the *last* slot for whatever tabs the
-		-- user already had open, instead of wherever tab_create happened to
-		-- insert it (cursor+1, i.e. potentially in the middle of the list).
-		-- Safe to queue right after tab_create: the insertion itself is
-		-- synchronous (only the directory read is async), and tab_swap does
-		-- no I/O of its own.
-		ya.emit("tab_swap", { "bot" })
+		-- Move the pinned tab to the very front of cx.tabs, right after
+		-- creating it, so its label always sits first in the tab bar
+		-- instead of wherever tab_create happened to insert it (cursor+1,
+		-- i.e. potentially in the middle of the list). Safe to queue right
+		-- after tab_create: the insertion itself is synchronous (only the
+		-- directory read is async), and tab_swap does no I/O of its own.
+		ya.emit("tab_swap", { "top" })
 		-- tab_create is async and activates the tab it creates -- switching
 		-- back to M.main_id has to wait until that's landed, hence the
 		-- follow-up dispatch instead of doing it inline here.
@@ -393,9 +391,9 @@ function M:entry(job)
 		-- tab_create activates the new tab itself, which is what leaves focus
 		-- on the pinned folder right after pinning -- do not switch back.
 		ya.emit("tab_create", { target })
-		-- Push it to the very end of cx.tabs -- see the matching comment in
-		-- the "reattach" branch above for why.
-		ya.emit("tab_swap", { "bot" })
+		-- Move it to the very front of cx.tabs -- see the matching comment
+		-- in the "reattach" branch above for why.
+		ya.emit("tab_swap", { "top" })
 	elseif action == "focus" then
 		if not pidx then
 			return
