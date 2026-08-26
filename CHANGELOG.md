@@ -77,3 +77,8 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
   focus -- it previously navigated whichever tab was actually focused
   (right after the fix above started switching focus into `Parent` first,
   that meant navigating the *pinned* tab instead).
+- The mouse wheel now scrolls `Parent` -- it was completely frozen there
+  before (`Parent` isn't independently scrollable at all in vanilla yazi),
+  switching input focus into it first, same as clicking an entity there
+  does. Scrolling `Current` while focus is on the pinned tab no longer
+  moves the pinned tab's cursor instead of `Current`'s.

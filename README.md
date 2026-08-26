@@ -37,6 +37,11 @@ built-in components are overridden:
   focus already. Clicking blank space in `Parent` is the one exception --
   it always navigates the working tab up a level, without switching focus,
   matching vanilla yazi's own "click Parent to go up" gesture.
+- `Parent.scroll` makes the pinned folder scrollable with the mouse wheel
+  (`Parent` isn't scrollable at all in vanilla yazi), switching focus into
+  it the same way an entity click does. `Current.scroll` guards against
+  scrolling `Current` while focus is on the pinned tab moving the wrong
+  tab's cursor.
 
 Because the pinned pane is a genuine tab, every built-in yazi command
 (navigation, `create`/`remove`/`rename`/`yank`/`paste`, previews) works on it
@@ -101,6 +106,9 @@ space in `Parent` is different: it navigates your *working* tab up a level
 (the familiar "click Parent to go up" gesture, matching vanilla yazi) without
 switching focus at all -- your working tab moves up a level in the
 background regardless of which pane currently has input.
+
+The mouse wheel scrolls `Parent` too (it's frozen in vanilla yazi), and
+switches input focus into it first, same as clicking an entity there does.
 
 The pinned tab stays visible in the tab bar, always first (number key `1`)
 and marked with a 📌 next to its name, so it's identifiable and clickable

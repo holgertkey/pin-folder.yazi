@@ -291,6 +291,51 @@ function M:setup()
 		return current_click(self, event, up)
 	end
 
+	-- `Parent:scroll()` is a no-op stub in vanilla yazi (confirmed against
+	-- `parent.lua`) -- Parent is never independently scrollable there, its
+	-- listing is just whatever `Current`'s own navigation happens to put
+	-- in the parent directory. This plugin makes Parent an independently
+	-- navigable folder, so the mouse wheel over it should move its own
+	-- cursor the same way it does over Current (`Current:scroll()` is
+	-- `ya.emit("arrow", { step })`, unconditionally targeting `cx.active`)
+	-- -- switching focus into the pinned tab first when it isn't already
+	-- there, same as an entity click in Parent already does, since `arrow`
+	-- has no tab-index argument either.
+	local parent_scroll = Parent.scroll
+	Parent.scroll = function(self, event, step)
+		local pidx, on_pin = pin_focus()
+		if not pidx then
+			return parent_scroll(self, event, step)
+		end
+		if not on_pin then
+			ya.emit("tab_switch", { pidx - 1 })
+		end
+		ya.emit("arrow", { step })
+	end
+
+	-- Current:scroll() has the same wrong-tab exposure `Current.click`
+	-- (item 20) already guards against -- `ya.emit("arrow", { step })`
+	-- always targets `cx.active`, so scrolling over Current while focus is
+	-- on the pinned tab would move the *pinned* tab's cursor instead of
+	-- Current's, even though the wheel is visually over Current's listing.
+	-- Worth guarding unconditionally (no entity-row gate needed here,
+	-- unlike Current.click: scroll always acts, there's no "click that was
+	-- otherwise a no-op" case to preserve) -- especially now that
+	-- Parent.scroll above routinely leaves focus sitting on the pinned tab
+	-- as a side effect of the user just having scrolled Parent, making
+	-- this exposure easy to hit in one natural gesture.
+	local current_scroll = Current.scroll
+	Current.scroll = function(self, event, step)
+		local _, on_pin = pin_focus()
+		if on_pin then
+			local midx = main_index()
+			if midx then
+				ya.emit("tab_switch", { midx - 1 })
+			end
+		end
+		return current_scroll(self, event, step)
+	end
+
 	-- Mark whichever pane (Parent while on_pin, Current otherwise) is
 	-- currently receiving input, so `focus` toggling is visible at a glance.
 	-- Both chunks are padded by one row on top *unconditionally* (not just
