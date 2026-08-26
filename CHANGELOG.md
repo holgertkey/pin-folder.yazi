@@ -13,7 +13,7 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
 
 - Pin the hovered (or current) directory into the `Parent` column as a fully
   interactive, independently navigable tab (`' p`).
-- Toggle input focus between the working tab and the pinned tab (`' f`).
+- Toggle input focus between the working tab and the pinned tab (`' '`).
 - A colored line above whichever pane (`Parent`/`Current`) currently has
   input focus while something is pinned, so `focus` toggling is visible.
 - The pinned path persists across yazi restarts (via DDS).
@@ -58,3 +58,10 @@ for what "version" means for a yazi plugin distributed via `ya pkg`.
   pinned: `ps.pub_to` turns out to deliver back to the *publishing*
   instance's own subscription, so every `pin` was also triggering the
   restart-restore logic on itself right after creating the real tab.
+- Clicking a file or folder in `Parent` or `Current` (or blank space in
+  `Parent`) now switches input focus into that pane first. Previously a
+  click could act on the wrong tab -- e.g. clicking an item in `Parent`
+  while focus was still on `Current` revealed it in the working tab
+  instead of the pinned one whose listing was actually shown there, since
+  the underlying click handlers always target whichever tab is currently
+  focused, not whichever tab's listing is being displayed.

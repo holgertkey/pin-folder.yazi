@@ -31,6 +31,10 @@ built-in components are overridden:
 - `Tabs.redraw` prefixes the pinned tab's label with a pin icon (📌) in the
   tab bar, so it's identifiable at a glance -- it stays a normal, visible,
   clickable tab like your own.
+- `Parent.click`/`Current.click` switch input focus into whichever pane you
+  click before the click itself is handled, so clicking a file or folder
+  always acts on the pane you clicked, not whichever pane happened to have
+  focus already.
 
 Because the pinned pane is a genuine tab, every built-in yazi command
 (navigation, `create`/`remove`/`rename`/`yank`/`paste`, previews) works on it
@@ -70,7 +74,7 @@ require("pin-folder"):setup()
 [mgr]
 prepend_keymap = [
 	{ on = [ "'", "p" ], run = "plugin pin-folder pin", desc = "Pin/unpin hovered folder in the Parent column" },
-	{ on = [ "'", "f" ], run = "plugin pin-folder focus", desc = "Toggle focus into the pinned folder" },
+	{ on = [ "'", "'" ], run = "plugin pin-folder focus", desc = "Toggle focus into the pinned folder" },
 	{ on = [ "<C-c>" ], run = "plugin pin-folder close", desc = "Close the current tab, or quit if it's the last real one (blocked on the pinned tab -- use ' p to unpin instead)" },
 ]
 ```
@@ -82,10 +86,16 @@ prepend_keymap = [
   is hovered) into the `Parent` column and switch input focus into it; press
   again (from anywhere) to unpin. **This is the only legal way to close the
   pinned tab** -- see below.
-- `' f` -- toggle input focus between your working tab and the pinned one.
+- `' '` -- toggle input focus between your working tab and the pinned one.
   While focused on the pinned tab, all normal navigation and file operations
   apply to it, and `Current`/`Preview` stay showing your working tab
   untouched.
+
+Clicking a file or folder in either `Parent` or `Current` also switches input
+focus into that pane first, same as `' '` would -- so mouse and keyboard
+agree on which pane a click actually acts on. Clicking blank space in
+`Parent` (which navigates up a level) does this too; blank space in
+`Current` is a no-op either way, so it doesn't switch focus.
 
 The pinned tab stays visible in the tab bar, always first (number key `1`)
 and marked with a 📌 next to its name, so it's identifiable and clickable
@@ -106,7 +116,7 @@ count as a tab worth staying open for by itself.
 
 While something is pinned, whichever pane -- `Parent` or `Current` -- is
 currently receiving input gets a yellow line above it, so it's clear at a
-glance where `' f` left you. Change the color/style in `FOCUS_STYLE` near the
+glance where `' '` left you. Change the color/style in `FOCUS_STYLE` near the
 top of `pin-folder.yazi/main.lua` to taste.
 
 ## Known limitations

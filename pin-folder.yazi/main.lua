@@ -185,6 +185,49 @@ function M:setup()
 		return me
 	end
 
+	-- Clicking a pane should switch input focus into it first, same as `'
+	-- '` would, *before* the click itself is handled -- otherwise a click
+	-- on an entity fires `ya.emit("reveal", ...)` (and Parent's blank-space
+	-- fallback fires `ya.emit("leave", {})`) against whatever tab happens
+	-- to be `cx.active` already, which can be the *other* pane's tab (e.g.
+	-- clicking an item in Parent while focus is still on Current emits
+	-- `reveal` against the working tab, not the pinned one whose listing
+	-- is actually showing there). `up`/middle-click are already no-ops in
+	-- the originals, so both overrides skip the switch for those too.
+	local parent_click = Parent.click
+	Parent.click = function(self, event, up)
+		if not (up or event.is_middle) then
+			local pidx, on_pin = pin_focus()
+			if pidx and not on_pin then
+				ya.emit("tab_switch", { pidx - 1 })
+			end
+		end
+		return parent_click(self, event, up)
+	end
+
+	-- Unlike Parent, Current:click() has no blank-space fallback -- it only
+	-- acts when the click actually lands on an entity row -- so the switch
+	-- here is gated the same way (mirroring Current:click()'s own row
+	-- lookup), or a blank-space click on Current while focused on the
+	-- pinned tab would switch focus for a click that was otherwise a
+	-- silent no-op.
+	local current_click = Current.click
+	Current.click = function(self, event, up)
+		if not (up or event.is_middle) then
+			local y = event.y - self._area.y + 1
+			if self._folder and self._folder.window and self._folder.window[y] then
+				local _, on_pin = pin_focus()
+				if on_pin then
+					local midx = main_index()
+					if midx then
+						ya.emit("tab_switch", { midx - 1 })
+					end
+				end
+			end
+		end
+		return current_click(self, event, up)
+	end
+
 	-- Mark whichever pane (Parent while on_pin, Current otherwise) is
 	-- currently receiving input, so `focus` toggling is visible at a glance.
 	-- The target chunk is padded by one row on top *before* the real build()
