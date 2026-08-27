@@ -59,7 +59,23 @@ local function pin_index()
 	-- with the exact same cwd as the working tab (M.main_id). Exclude that
 	-- one explicitly, or this would latch onto the working tab instead of
 	-- the new pinned one (they're indistinguishable by cwd alone).
-	if not M.path then
+	--
+	-- That exclusion needs M.main_id to be known -- bail until it is, rather
+	-- than scanning without it. This function runs from render callbacks
+	-- (Root.build / Tabs.redraw / Parent.new), and a render can fire in the
+	-- brief window between the DDS `@pin-folder` callback setting M.path and
+	-- the `reattach` action running -- and `reattach` is what sets M.main_id.
+	-- Scanning in that window with M.main_id still nil skips the exclusion,
+	-- so when yazi was launched from inside the pinned directory (its sole
+	-- starting tab's cwd == M.path, e.g. via a `--cwd-file` shell wrapper)
+	-- this latches M.pin_id onto that working tab. `reattach` then sees its
+	-- own poisoned cache make pin_index() succeed, skips `tab_create`, and no
+	-- pinned tab is ever created -- the lone real tab is left flagged as both
+	-- pinned and working, `on_pin` stuck true, `focus` a no-op, the tab bar
+	-- and Current column visibly broken. Reproduces only on a cold start
+	-- (warm, `reattach` wins the race before any render). See concept.md
+	-- items 8/9/13 -- same ambiguity, via a path those fixes didn't cover.
+	if not M.path or not M.main_id then
 		return nil
 	end
 	for i = 1, #cx.tabs do
