@@ -14,7 +14,8 @@ is independent from the `Current` column's cursor.
 
 ## Requirements
 
-- yazi (developed against `26.8.15`)
+- yazi `26.8.15` or newer -- the plugin's `--- @since 26.8.15` annotation is a
+  hard floor, yazi refuses to load it on anything older
 
 ## How it works
 
@@ -53,13 +54,17 @@ not -- it's recreated/reattached on demand.
 
 ## Installation
 
-Not packaged yet. Manual setup:
+Not packaged yet. Clone the repo and symlink it into yazi's plugin directory:
 
 ```sh
 ln -s "$(pwd)" ~/.config/yazi/plugins/pin-folder.yazi
 ```
 
-Add to your own `init.lua`:
+The plugin is just `main.lua`. `init.lua` and `keymap.toml` are not part of
+the repo -- they're local config only -- so add the two snippets below to
+your own.
+
+Register it in your `init.lua`:
 
 ```lua
 require("pin-folder"):setup()
