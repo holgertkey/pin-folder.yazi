@@ -22,7 +22,9 @@ The pinned directory is backed by a real, normally-inactive yazi tab. Several
 built-in components are overridden:
 
 - `Parent` always renders that tab's `current` folder instead of the real
-  parent directory.
+  parent directory, and `Markers` draws the selection/yank/visual-mode bars
+  in that column against the same folder, so they reflect what's selected
+  inside the pinned folder.
 - `Root.build` keeps `Current`/`Preview` locked to your working tab even while
   the pinned tab is temporarily made active for input (via `focus`).
 - `Tab.build` draws the focus indicator line described under Keybindings
@@ -136,9 +138,6 @@ color instead of following the theme, edit the `accent`/fallback color in
 - The pinned folder is only live-watched by the filesystem while its tab is
   active (i.e. while focused). While pinned-but-unfocused it shows the last
   known state.
-- Selection/yank markers in the `Parent` column are drawn against the working
-  tab, not the pinned one -- may not line up with the pinned listing rows.
-  Cosmetic only.
 - Counts as one more tab against yazi's 9-tab limit while pinned.
 - Only yazi's *default* `<C-c>` binding is guarded against closing the pinned
   tab. A custom keymap that binds `tab_close` (or some other command)

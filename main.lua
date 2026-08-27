@@ -13,9 +13,6 @@
 -- - The pinned folder's listing is only live-watched by the FS while its
 --   tab is active (i.e. while focused). While pinned-but-unfocused it shows
 --   the last known state.
--- - Selection/yank markers in the Parent column are drawn against the main
---   tab (Tab:build passes the same tab to Rails/Markers as to Parent), so
---   they may not line up with the pinned listing. Cosmetic only.
 -- - Counts as one more tab against yazi's 9-tab limit while pinned.
 -- - The pinned tab is shown in the tab bar (marked with a pin icon) and
 --   pushed to the very front of cx.tabs at pin time (always number key
@@ -224,6 +221,37 @@ function M:setup()
 		local pidx = pin_index()
 		if pidx then
 			me._folder = cx.tabs[pidx].current
+		end
+
+		return me
+	end
+
+	-- The Parent column's selection/yank/visual-mode marker bars are built
+	-- by yazi's own Markers component from `self._tab.parent` (see
+	-- `markers.lua`), and `self._tab` is always the working tab -- so the
+	-- `Parent.new` override above, which swaps the column's *entities* to
+	-- the pinned tab's `current`, left its *markers* keyed to a different
+	-- listing: selections inside the pinned folder drew no bars, stray
+	-- working-tab parent-dir selections drew phantom ones. Re-pair the two
+	-- by pointing the first Marker's folder at the same `cx.tabs[pidx].current`,
+	-- under the exact same `pin_index()` gate `Parent.new` uses -- a looser
+	-- or stricter gate could draw the bars against a different listing than
+	-- the rows beside them. `_children[2]` (Current's marker) is left alone;
+	-- it and `Current` both key off `self._tab.current` and stay paired.
+	--
+	-- Styling resolves correctly for the pinned tab with no extra work: yazi
+	-- binds every File a folder yields to that folder's originating tab, not
+	-- to `cx.active` (`yazi-actor/src/lives/folder.rs`/`file.rs` --
+	-- `is_selected`/`is_marked` check `me.tab`; `is_yanked` is global). And
+	-- `_folder` being nil (working tab at `/`, no parent) is already a
+	-- `Marker:redraw` no-op, so the reassignment needs no nil-guard.
+	local markers_new = Markers.new
+	Markers.new = function(self, chunks, tab)
+		local me = markers_new(self, chunks, tab)
+
+		local pidx = pin_index()
+		if pidx then
+			me._children[1]._folder = cx.tabs[pidx].current
 		end
 
 		return me

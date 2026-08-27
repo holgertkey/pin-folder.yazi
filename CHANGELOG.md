@@ -81,3 +81,8 @@ tagged versions yet.
   switching input focus into it first, same as clicking an entity there
   does. Scrolling `Current` while focus is on the pinned tab no longer
   moves the pinned tab's cursor instead of `Current`'s.
+- Selection, yank and visual-mode marker bars now show in the `Parent`
+  column for files selected inside the pinned folder. They were previously
+  drawn against the working tab's real parent directory, so pinned-folder
+  selections showed no bars and stray parent-dir selections showed phantom
+  ones.
