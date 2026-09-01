@@ -3,10 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-This project is not yet published (see README's Status line), so there are no
-tagged versions yet.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-09-01
 
 ### Added
 

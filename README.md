@@ -8,7 +8,7 @@ independently navigable view: browse into subdirectories, create/remove/rename
 files, see live previews, all without leaving the `Parent` column. Its cursor
 is independent from the `Current` column's cursor.
 
-> **Status:** work in progress, not yet published as a package. See
+> **Status:** released as `0.1.0`, still evolving. See
 > [`CHANGELOG.md`](CHANGELOG.md) for a user-facing summary of what's shipped
 > so far.
 
@@ -54,11 +54,25 @@ not -- it's recreated/reattached on demand.
 
 ## Installation
 
-Not packaged yet. Clone the repo and symlink it into yazi's plugin directory:
+### With `ya pkg` (recommended)
+
+```sh
+ya pkg add holgertkey/pin-folder
+```
+
+`ya pkg` appends the `.yazi` suffix itself, cloning
+`holgertkey/pin-folder.yazi` into `~/.config/yazi/plugins/`. Update later with
+`ya pkg upgrade`.
+
+### From a clone (for local development)
+
+Symlink the repo into yazi's plugin directory:
 
 ```sh
 ln -s "$(pwd)" ~/.config/yazi/plugins/pin-folder.yazi
 ```
+
+### Then, either way
 
 The plugin is just `main.lua`. `init.lua` and `keymap.toml` are not part of
 the repo -- they're local config only -- so add the two snippets below to
